@@ -231,8 +231,11 @@ async function selectCity(cityKey) {
   try {
     const city = CITIES[cityKey];
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current=temperature_2m,weather_code&timezone=Asia/Tokyo`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('API error');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
 
     const temp = Math.round(data.current.temperature_2m * 10) / 10;
@@ -251,7 +254,13 @@ async function selectCity(cityKey) {
     `;
     speakBtn.disabled = false;
   } catch (e) {
-    area.innerHTML = `<div class="error">😢 データが取れなかったよ…<br>インターネット接続を確認してね！</div>`;
+    const msg = e.name === 'AbortError' ? 'タイムアウトしたよ（8秒）' : e.message;
+    area.innerHTML = `
+      <div class="error">😢 データが取れなかったよ…<br>
+      <small style="color:#fda4af;font-size:0.8rem">${msg}</small><br><br>
+      <button class="speak-btn" style="margin-top:0;padding:10px 24px;font-size:0.9rem" onclick="selectCity('${cityKey}')">🔄 もう一度試す</button>
+      </div>`;
+    console.error('Weather fetch error:', e);
   }
 }
 
