@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>お天気アプリ 🌸</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Hiragino Maru Gothic Pro', 'BIZ UDPGothic', sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #ffd6e7 0%, #ffb3d1 40%, #ff8fb8 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    border-radius: 32px;
+    padding: 36px 28px 32px;
+    max-width: 380px;
+    width: 100%;
+    box-shadow: 0 8px 40px rgba(255, 100, 160, 0.25), 0 2px 8px rgba(0,0,0,0.08);
+    text-align: center;
+  }
+
+  h1 {
+    font-size: 1.3rem;
+    color: #d6336c;
+    margin-bottom: 20px;
+    letter-spacing: 0.05em;
+  }
+
+  .city-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+
+  .city-btn {
+    padding: 10px 22px;
+    border: 2.5px solid #f9a8d4;
+    border-radius: 999px;
+    background: white;
+    color: #d6336c;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+  }
+
+  .city-btn:hover { background: #fce7f3; transform: translateY(-1px); }
+
+  .city-btn.active {
+    background: linear-gradient(135deg, #f472b6, #ec4899);
+    color: white;
+    border-color: #ec4899;
+    box-shadow: 0 4px 14px rgba(236, 72, 153, 0.4);
+  }
+
+  .weather-area {
+    min-height: 210px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .city-name {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #9d174d;
+  }
+
+  .emoji {
+    font-size: 5.5rem;
+    line-height: 1;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.12));
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  .temp {
+    font-size: 4rem;
+    font-weight: 900;
+    color: #be185d;
+    line-height: 1;
+  }
+
+  .temp span { font-size: 1.8rem; font-weight: 600; color: #db2777; }
+
+  .weather-label {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: #be185d;
+    background: linear-gradient(135deg, #fce7f3, #fdf2f8);
+    border-radius: 999px;
+    padding: 6px 22px;
+    margin-top: 4px;
+  }
+
+  .message {
+    font-size: 0.95rem;
+    color: #ec4899;
+    margin-top: 6px;
+    min-height: 1.4em;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  .loading {
+    font-size: 1.1rem;
+    color: #f472b6;
+    animation: pulse 1s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+  .error { color: #f43f5e; font-size: 1rem; line-height: 1.6; }
+
+  .speak-btn {
+    margin-top: 22px;
+    padding: 13px 36px;
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #f9a8d4, #f472b6);
+    color: white;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    box-shadow: 0 4px 14px rgba(244, 114, 182, 0.4);
+  }
+
+  .speak-btn:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 6px 20px rgba(244,114,182,0.5); }
+  .speak-btn:active { transform: scale(0.97); }
+  .speak-btn:disabled { opacity: 0.45; cursor: default; transform: none; box-shadow: none; }
+
+  footer {
+    margin-top: 18px;
+    font-size: 0.72rem;
+    color: #f9a8d4;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🌸 お天気アプリ 🌸</h1>
+
+  <div class="city-buttons">
+    <button class="city-btn active" onclick="selectCity('takamatsu')" id="btn-takamatsu">高松</button>
+    <button class="city-btn" onclick="selectCity('tokyo')" id="btn-tokyo">東京</button>
+    <button class="city-btn" onclick="selectCity('osaka')" id="btn-osaka">大阪</button>
+  </div>
+
+  <div class="weather-area" id="weather-area">
+    <div class="loading">🌸 読み込み中...</div>
+  </div>
+
+  <button class="speak-btn" id="speak-btn" onclick="speak()" disabled>🔊 しゃべる</button>
+
+  <footer>Open-Meteo API 使用（APIキー不要）</footer>
+</div>
+
+<script>
+const CITIES = {
+  takamatsu: { name: '高松', lat: 34.34, lon: 134.05 },
+  tokyo:     { name: '東京', lat: 35.69, lon: 139.69 },
+  osaka:     { name: '大阪', lat: 34.69, lon: 135.50 },
+};
+
+const WMO = {
+  0:  { emoji: '☀️',  label: '快晴',          speech: ['今日は快晴だよ！外に出かけよう！', '太陽ギラギラだよ！日焼け止め忘れずにね！', '快晴だよ～！最高のお天気！'] },
+  1:  { emoji: '🌤️', label: '晴れ',           speech: ['晴れてるよ！いいお天気だね～！', '晴れだよ！お洗濯日和だよ！', 'お日様が出てるよ！気持ちいいね！'] },
+  2:  { emoji: '⛅',  label: '晴れ時々くもり', speech: ['晴れてるけど雲もあるよ。折りたたみ傘があると安心！', '少しくもってきたよ。でも大丈夫そう！'] },
+  3:  { emoji: '☁️',  label: 'くもり',         speech: ['くもり空だよ。なんか眠くなっちゃうね！', 'どんよりくもりだよ～。ゆっくり過ごそう！', 'くもってるよ。雨にならないといいね！'] },
+  45: { emoji: '🌫️', label: '霧',             speech: ['霧が出てるよ！視界に気をつけてね！', 'もやもや霧だよ。幻想的だね～！'] },
+  48: { emoji: '🌫️', label: '霜霧',           speech: ['霧氷が出てるよ！とっても寒いから気をつけてね！'] },
+  51: { emoji: '🌦️', label: '霧雨',           speech: ['霧雨が降ってるよ。傘いるかも？', 'しとしと霧雨だよ～。'] },
+  53: { emoji: '🌦️', label: '霧雨',           speech: ['霧雨だよ。折りたたみ持っていってね！'] },
+  55: { emoji: '🌦️', label: '強い霧雨',       speech: ['結構な霧雨だよ！傘持ってね！'] },
+  61: { emoji: '🌧️', label: '小雨',           speech: ['小雨が降ってるよ。濡れないようにね！', '雨だよ～！傘忘れないでね！'] },
+  63: { emoji: '🌧️', label: '雨',             speech: ['雨だよ！今日はお家でまったりしよ？', 'しっかり雨だよ～！大きめの傘がいるよ！', '雨だよ。足元気をつけてね！'] },
+  65: { emoji: '🌧️', label: '大雨',           speech: ['大雨だよ！気をつけてね！', 'ザーザー大雨だよ～！外出は控えめにしてね。'] },
+  71: { emoji: '🌨️', label: '小雪',           speech: ['雪が降ってるよ！ふわふわ～！', '雪だよ！滑らないように気をつけてね！'] },
+  73: { emoji: '❄️',  label: '雪',             speech: ['雪だよ～！積もるかもね！', 'しっかり雪が降ってるよ！防寒完璧にしてね！'] },
+  75: { emoji: '❄️',  label: '大雪',           speech: ['大雪だよ！外出は危険かも！', '大雪だよ！安全第一だよ！'] },
+  80: { emoji: '🌦️', label: 'にわか雨',       speech: ['にわか雨が来るよ！折りたたみ傘持ってってね！', '急に雨が降るかもしれないよ！'] },
+  81: { emoji: '🌧️', label: 'にわか雨',       speech: ['にわか雨だよ！サッと傘さしてね！'] },
+  82: { emoji: '⛈️',  label: '激しいにわか雨', speech: ['激しい雨が来るよ！外に出るのは気をつけてね！'] },
+  95: { emoji: '⛈️',  label: '雷雨',           speech: ['雷雨だよ！雷が鳴ってるから気をつけてね！', 'ゴロゴロ⚡雷雨だよ！外出は危険だよ！'] },
+  96: { emoji: '⛈️',  label: '雷雨（ひょう）', speech: ['雷雨とひょうだよ！絶対外に出ちゃダメだよ！'] },
+  99: { emoji: '⛈️',  label: '激しい雷雨',     speech: ['激しい嵐だよ！安全な場所にいてね！'] },
+};
+
+function getWeatherInfo(code) {
+  if (WMO[code]) return WMO[code];
+  const keys = Object.keys(WMO).map(Number).sort((a,b) => a-b);
+  for (let i = keys.length-1; i >= 0; i--) {
+    if (keys[i] <= code) return WMO[keys[i]];
+  }
+  return { emoji: '🌈', label: '不明', speech: ['お天気情報が取れなかったよ！ごめんね！'] };
+}
+
+let currentSpeechText = '';
+
+async function selectCity(cityKey) {
+  Object.keys(CITIES).forEach(k => {
+    document.getElementById('btn-' + k).classList.toggle('active', k === cityKey);
+  });
+
+  const area = document.getElementById('weather-area');
+  const speakBtn = document.getElementById('speak-btn');
+  area.innerHTML = '<div class="loading">🌸 読み込み中...</div>';
+  speakBtn.disabled = true;
+  currentSpeechText = '';
+
+  try {
+    const city = CITIES[cityKey];
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current=temperature_2m,weather_code&timezone=Asia/Tokyo`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+
+    const temp = Math.round(data.current.temperature_2m * 10) / 10;
+    const code = data.current.weather_code;
+    const info = getWeatherInfo(code);
+    const msg = info.speech[Math.floor(Math.random() * info.speech.length)];
+
+    currentSpeechText = `${city.name}は今、${info.label}。気温は${temp}度。${msg}`;
+
+    area.innerHTML = `
+      <div class="city-name">${city.name}</div>
+      <div class="emoji">${info.emoji}</div>
+      <div class="temp">${temp}<span>℃</span></div>
+      <div class="weather-label">${info.label}</div>
+      <div class="message">💬 ${msg}</div>
+    `;
+    speakBtn.disabled = false;
+  } catch (e) {
+    area.innerHTML = `<div class="error">😢 データが取れなかったよ…<br>インターネット接続を確認してね！</div>`;
+  }
+}
+
+function speak() {
+  if (!currentSpeechText || !('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(currentSpeechText);
+  utter.lang = 'ja-JP';
+  utter.pitch = 1.35;
+  utter.rate = 1.0;
+
+  const voices = window.speechSynthesis.getVoices();
+  const jaVoice = voices.find(v => v.lang.startsWith('ja') && /female|woman|kyoko|haruka|mizuki/i.test(v.name))
+    || voices.find(v => v.lang.startsWith('ja'));
+  if (jaVoice) utter.voice = jaVoice;
+
+  window.speechSynthesis.speak(utter);
+}
+
+window.speechSynthesis && window.speechSynthesis.addEventListener('voiceschanged', () => {});
+
+selectCity('takamatsu');
+</script>
+</body>
+</html>
